@@ -84,7 +84,7 @@ public class GitHubToolModule(
         }
         catch (Exception e)
         {
-            return (-1, $"{{\"message\": \"request error: {e.Message}\", \"documentation_url\": \"\"}}");
+            return (-1, new JObject { ["message"] = "request error: " + e.Message, ["documentation_url"] = "" }.ToString(Formatting.None));
         }
     }
 
@@ -153,7 +153,7 @@ public class GitHubToolModule(
         {
             if (obj["message"] != null && (obj["documentation_url"] != null || obj["errors"] != null))
             {
-                string msg = $"Error: {obj[\"message\"]}";
+                string msg = "Error: " + (obj["message"]?.ToString() ?? "");
                 if (obj["errors"] is JArray errs && errs.Count > 0)
                 {
                     string errText = errs.ToString(Formatting.None);
@@ -163,7 +163,7 @@ public class GitHubToolModule(
             }
             if (obj["total_count"] != null)
             {
-                var lines = new StringBuilder($"Total: {obj[\"total_count\"]}");
+                var lines = new StringBuilder("Total: " + (obj["total_count"]?.ToString() ?? ""));
                 if (obj["items"] is JArray items)
                 {
                     int shown = 0;
@@ -180,12 +180,12 @@ public class GitHubToolModule(
                 return lines.ToString();
             }
             if (obj["content"] is JObject contentObj && contentObj["sha"] != null)
-                return $"sha: {contentObj[\"sha\"]}";
+                return "sha: " + (contentObj["sha"]?.ToString() ?? "");
             if (obj["commit"] != null && obj["sha"] != null)
             {
                 string cm = obj["commit"]?["message"]?.ToString() ?? "";
                 if (cm.Length > 60) cm = cm[..60];
-                return $"sha: {obj[\"sha\"]}  {cm}";
+                return "sha: " + (obj["sha"]?.ToString() ?? "") + "  " + cm;
             }
             foreach (string k in new[] { "full_name", "sha", "name" })
             {
@@ -193,9 +193,9 @@ public class GitHubToolModule(
                 {
                     return k switch
                     {
-                        "full_name" => $"{obj[k]}  {obj[\"html_url\"]}",
+                        "full_name" => (obj[k]?.ToString() ?? "") + "  " + (obj["html_url"]?.ToString() ?? ""),
                         "sha" => $"sha: {obj[k]}",
-                        _ => $"{obj[k]}  {obj[\"html_url\"]}",
+                        _ => (obj[k]?.ToString() ?? "") + "  " + (obj["html_url"]?.ToString() ?? ""),
                     };
                 }
             }
@@ -226,7 +226,7 @@ public class GitHubToolModule(
                 if (shown++ >= 20) break;
                 string? n = item["full_name"]?.ToString() ?? item["name"]?.ToString() ?? item["filename"]?.ToString() ?? item["login"]?.ToString();
                 if (string.IsNullOrEmpty(n) && item["title"] != null)
-                    n = item["number"] != null ? $"#{item[\"number\"]} {item[\"title\"]}" : item["title"]!.ToString();
+                    n = item["number"] != null ? "#" + (item["number"]?.ToString() ?? "") + " " + (item["title"]?.ToString() ?? "") : item["title"]!.ToString();
                 if (string.IsNullOrEmpty(n) && item["commit"] is JObject co)
                 {
                     string msg1 = (co["message"]?.ToString() ?? "").Split('\n')[0];
@@ -262,7 +262,7 @@ public class GitHubToolModule(
         }
 
         if (obj["message"] != null && (obj["documentation_url"] != null || obj["errors"] != null))
-            return $"Error: {obj[\"message\"]}";
+            return "Error: " + (obj["message"]?.ToString() ?? "");
 
         string content = obj["content"]?.ToString() ?? "";
         if (string.IsNullOrEmpty(content))
@@ -297,7 +297,7 @@ public class GitHubToolModule(
         result.Append($"SHA: {sha}\n");
         result.Append($"总字符数: {totalChars}\n");
         result.Append($"本次读取: {offset} → {endPos} (共 {endPos - offset} 字符)\n");
-        result.Append($"还有更多: {(hasMore ? \"是\" : \"否\")}\n");
+        result.Append("还有更多: " + (hasMore ? "是" : "否") + "\n");
         result.Append($"\n--- 内容开始 ---\n{displayContent}\n--- 内容结束 ---");
         if (hasMore)
             result.Append($"\n\n💡 提示: 文件还有 {totalChars - endPos} 字符未读。如需继续，请使用相同的参数并设置 offset={endPos}。");
@@ -315,7 +315,7 @@ public class GitHubToolModule(
             interactor.Poke("❌ GitHub Token 未配置，请在插件配置中填写 Personal Access Token（需要 repo 权限）。");
             return;
         }
-        string msg = $"✅ GitHub Token 已配置，当前登录账号为 {(_githubUser.Length > 0 ? _githubUser : \"未知\")}。";
+        string msg = "✅ GitHub Token 已配置，当前登录账号为 " + (_githubUser.Length > 0 ? _githubUser : "未知") + "。";
         if (Configuration.ExposeTokenInCheck)
             msg += $"\n\n⚠️ 【明文 Token】{Configuration.GitHubToken}\n\n此 Token 仅用于调试，请勿分享或记录到对话日志中。";
         interactor.Poke(msg);
@@ -636,7 +636,7 @@ public class GitHubToolModule(
                     ? $"/repos/{o}/{r}/pulls/comments/{cid}"
                     : $"/repos/{o}/{r}/issues/comments/{cid}";
                 var (code, outBody) = await ReqAsync("DELETE", path);
-                interactor.Poke(code == 204 ? $"✅ {(k == \"review\" ? \"PR review\" : \"Issue\")}评论 {cid} 已删除" : $"删除评论失败 (HTTP {code}): {Fmt(outBody)}");
+                interactor.Poke(code == 204 ? "✅ " + (k == "review" ? "PR review" : "Issue") + "评论 " + cid + " 已删除" : $"删除评论失败 (HTTP {code}): {Fmt(outBody)}");
                 return;
             }
             case "delete_branch":
@@ -775,7 +775,7 @@ public class GitHubToolModule(
                         if (od["content"]?["sha"] != null)
                         {
                             string newSha = od["content"]!["sha"]!.ToString();
-                            results.Append($"\n  {fp}: ✅ {(string.IsNullOrEmpty(sha) ? \"新建\" : \"更新\")}成功 sha={newSha[..Math.Min(8, newSha.Length)]}");
+                            results.Append("\n  " + fp + ": ✅ " + (string.IsNullOrEmpty(sha) ? "新建" : "更新") + "成功 sha=" + newSha[..Math.Min(8, newSha.Length)]);
                         }
                         else if (od["message"] != null)
                         {
